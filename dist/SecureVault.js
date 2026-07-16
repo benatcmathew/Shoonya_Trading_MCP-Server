@@ -100,9 +100,11 @@ export async function interactiveSetup() {
                 output: process.stdout,
             });
             if (hidden) {
-                process.stdout.write(question);
                 rlInstance._writeToOutput = function _writeToOutput(stringToWrite) {
-                    if (stringToWrite === '\r\n' || stringToWrite === '\n' || stringToWrite === '\r') {
+                    if (stringToWrite === question) {
+                        process.stdout.write(stringToWrite);
+                    }
+                    else if (stringToWrite === '\r\n' || stringToWrite === '\n' || stringToWrite === '\r') {
                         process.stdout.write('\n');
                     }
                     else if (stringToWrite.includes('\x1B')) {
@@ -112,17 +114,11 @@ export async function interactiveSetup() {
                         process.stdout.write('*');
                     }
                 };
-                rlInstance.question('', (answer) => {
-                    rlInstance.close();
-                    resolve(answer.trim());
-                });
             }
-            else {
-                rlInstance.question(question, (answer) => {
-                    rlInstance.close();
-                    resolve(answer.trim());
-                });
-            }
+            rlInstance.question(question, (answer) => {
+                rlInstance.close();
+                resolve(answer.trim());
+            });
         });
     };
     console.log('\n╔══════════════════════════════════════════════════════════════╗');
