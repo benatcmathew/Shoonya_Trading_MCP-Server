@@ -1,0 +1,40 @@
+{
+  "name": "shoonya-mcp-node",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node ./dist/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/benatcmathew/Shoonya_Trading_MCP-Server.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/benatcmathew/Shoonya_Trading_MCP-Server/issues"
+  },
+  "homepage": "https://github.com/benatcmathew/Shoonya_Trading_MCP-Server#readme",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "adm-zip": "^0.6.0",
+    "axios": "^1.18.1",
+    "csv-parse": "^7.0.1",
+    "js-sha256": "^0.11.1",
+    "totp-generator": "^2.0.1"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  },
+  "bin": {
+    "shoonya-mcp-server": "./dist/index.js"
+  }
+}
