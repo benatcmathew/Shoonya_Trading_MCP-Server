@@ -2,6 +2,7 @@ import axios from 'axios';
 import { sha256 } from 'js-sha256';
 import { TOTP } from 'totp-generator';
 import { MasterData } from './MasterData.js';
+import { ShoonyaCredentials } from './SecureVault.js';
 
 const BASE_URL = 'https://api.shoonya.com/NorenWClientTP/';
 
@@ -72,6 +73,21 @@ export class ShoonyaClient {
     } catch (e: any) {
       return { status: "error", message: e.message };
     }
+  }
+
+  /**
+   * Login using credentials from the encrypted SecureVault.
+   * The AI never sees any credential values.
+   */
+  async loginFromVault(credentials: ShoonyaCredentials): Promise<any> {
+    return this.login(
+      credentials.user_id,
+      credentials.password,
+      credentials.totp_key,
+      credentials.vendor_code,
+      credentials.api_key,
+      credentials.imei
+    );
   }
 
   private _parseOrderCommand(command: string): any {
