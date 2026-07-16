@@ -79,6 +79,13 @@ This will:
 - Ask you to set a master password
 - Encrypt everything with AES-256-GCM and save to `~/.shoonya-mcp/vault.enc`
 
+### Editing Credentials (90-Day Password Reset)
+Shoonya requires users to reset their broker password every 90 days. To update your vault with your new password (or edit any other API details), simply run the edit command:
+```bash
+npx github:benatcmathew/Shoonya_Trading_MCP-Server --edit
+```
+When prompted, type `yes` to overwrite your existing vault, and enter your new details.
+
 ### Step 2: Connect to Claude Desktop
 Add this to your `claude_desktop_config.json`:
 ```json
