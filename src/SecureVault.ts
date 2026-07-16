@@ -118,44 +118,29 @@ export function deleteVault(): boolean {
  * Used when running: npx shoonya-mcp-server --setup
  */
 export async function interactiveSetup(): Promise<void> {
-  const rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
   const ask = (question: string, hidden: boolean = false): Promise<string> => {
     return new Promise((resolve) => {
-      if (hidden && process.stdin.isTTY) {
-        // For hidden input in TTY mode
-        process.stdout.write(question);
-        const stdin = process.stdin;
-        stdin.setRawMode(true);
-        stdin.resume();
-        stdin.setEncoding('utf8');
-        let input = '';
-        const onData = (char: string) => {
-          if (char === '\n' || char === '\r' || char === '\u0004') {
-            stdin.setRawMode(false);
-            stdin.pause();
-            stdin.removeListener('data', onData);
+      const rlInstance = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+
+      if (hidden) {
+        (rlInstance as any)._writeToOutput = function _writeToOutput(stringToWrite: string) {
+          if (stringToWrite === '\r\n' || stringToWrite === '\n' || stringToWrite === '\r') {
             process.stdout.write('\n');
-            resolve(input);
-          } else if (char === '\u0003') {
-            process.exit();
-          } else if (char === '\u007F' || char === '\b') {
-            if (input.length > 0) {
-              input = input.slice(0, -1);
-              process.stdout.write('\b \b');
-            }
+          } else if (stringToWrite.includes('\x1B')) {
+            // ignore escape sequences
           } else {
-            input += char;
             process.stdout.write('*');
           }
         };
-        stdin.on('data', onData);
-      } else {
-        rl.question(question, resolve);
       }
+
+      rlInstance.question(question, (answer) => {
+        rlInstance.close();
+        resolve(answer.trim());
+      });
     });
   };
 
@@ -171,7 +156,6 @@ export async function interactiveSetup(): Promise<void> {
     const overwrite = await ask('⚠️  A credential vault already exists. Overwrite? (yes/no): ');
     if (overwrite.toLowerCase() !== 'yes') {
       console.log('Setup cancelled.');
-      rl.close();
       return;
     }
   }
@@ -193,13 +177,11 @@ export async function interactiveSetup(): Promise<void> {
 
   if (masterPassword !== confirmPassword) {
     console.log('\n❌ Passwords do not match. Setup cancelled.');
-    rl.close();
     return;
   }
 
   if (masterPassword.length < 8) {
     console.log('\n❌ Master password must be at least 8 characters. Setup cancelled.');
-    rl.close();
     return;
   }
 
@@ -218,6 +200,4 @@ export async function interactiveSetup(): Promise<void> {
   console.log('🔒 Encryption: AES-256-GCM | Key Derivation: PBKDF2 (310,000 iterations)');
   console.log('\n🚀 You can now start the MCP server. It will read credentials from the vault.');
   console.log('   The AI will never see your passwords.\n');
-
-  rl.close();
 }
