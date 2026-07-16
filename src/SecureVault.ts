@@ -126,6 +126,7 @@ export async function interactiveSetup(): Promise<void> {
       });
 
       if (hidden) {
+        process.stdout.write(question);
         (rlInstance as any)._writeToOutput = function _writeToOutput(stringToWrite: string) {
           if (stringToWrite === '\r\n' || stringToWrite === '\n' || stringToWrite === '\r') {
             process.stdout.write('\n');
@@ -135,12 +136,16 @@ export async function interactiveSetup(): Promise<void> {
             process.stdout.write('*');
           }
         };
+        rlInstance.question('', (answer) => {
+          rlInstance.close();
+          resolve(answer.trim());
+        });
+      } else {
+        rlInstance.question(question, (answer) => {
+          rlInstance.close();
+          resolve(answer.trim());
+        });
       }
-
-      rlInstance.question(question, (answer) => {
-        rlInstance.close();
-        resolve(answer.trim());
-      });
     });
   };
 
