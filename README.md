@@ -60,8 +60,8 @@ Your trading credentials are protected using **military-grade encryption**. The 
 | User ID | ❌ Never |
 | Broker Password | ❌ Never |
 | TOTP Secret Key | ❌ Never |
-| API Key | ❌ Never |
-| Vendor Code | ❌ Never |
+| Client ID (formerly Vendor Code) | ❌ Never |
+| Secret Code (formerly API Key) | ❌ Never |
 | IMEI | ❌ Never |
 | Order commands | ✅ (e.g., "NIFTY 24500 CE 30") |
 | Order results | ✅ (order ID, margin, status) |
