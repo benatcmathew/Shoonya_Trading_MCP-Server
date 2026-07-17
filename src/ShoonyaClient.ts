@@ -405,6 +405,9 @@ export class ShoonyaClient {
     try {
       const values = { uid: this.username, actid: this.accountid };
       const resDict = await this.makeRequest('Limits', values);
+      
+      console.error("[Limits Debug] Response:", JSON.stringify(resDict));
+      
       if (resDict && resDict.cash !== undefined) {
         let available_margin = parseFloat(resDict.cash || "0") + parseFloat(resDict.payin || "0") + parseFloat(resDict.payout || "0");
         if (resDict.marginused !== undefined) {
@@ -412,7 +415,7 @@ export class ShoonyaClient {
         }
         return { status: "success", available_margin };
       }
-      return { status: "error", message: "Failed to fetch margin" };
+      return { status: "error", message: "Failed to fetch margin: " + JSON.stringify(resDict) };
     } catch (e: any) {
       return { status: "error", message: e.message };
     }
