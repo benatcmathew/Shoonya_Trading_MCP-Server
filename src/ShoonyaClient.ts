@@ -11,6 +11,7 @@ const OAUTH_LOGIN_URL = 'https://api.shoonya.com/OAuthlogin/investor-entry-level
 export class ShoonyaClient {
   private loggedIn: boolean = false;
   private susertoken: string | null = null;
+  private access_token: string | null = null;
   private username: string | null = null;
   private accountid: string | null = null;
   private masterData: MasterData = new MasterData();
@@ -18,12 +19,21 @@ export class ShoonyaClient {
   private async makeRequest(endpoint: string, values: any, requiresAuth: boolean = true): Promise<any> {
     try {
       let payload = 'jData=' + JSON.stringify(values);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      };
+
       if (requiresAuth) {
         if (!this.susertoken) throw new Error("Not logged in");
         payload += '&jKey=' + this.susertoken;
+        
+        if (this.access_token) {
+          headers['Authorization'] = `Bearer ${this.access_token}`;
+        }
       }
 
       const res = await axios.post(`${BASE_URL}${endpoint}`, payload, {
+        headers,
         validateStatus: () => true // Resolve all status codes to parse JSON errors
       });
       return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
@@ -211,6 +221,7 @@ export class ShoonyaClient {
         this.username = resDict.uname || user_id;
         this.accountid = resDict.actid || user_id;
         this.susertoken = resDict.susertoken;
+        this.access_token = resDict.access_token; // Store access token for Bearer auth
 
         console.error(`[OAuth] Login successful. Token obtained.`);
 
