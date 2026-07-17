@@ -24,11 +24,14 @@ export class ShoonyaClient {
       };
 
       if (requiresAuth) {
-        if (!this.susertoken) throw new Error("Not logged in");
-        payload += '&jKey=' + this.susertoken;
-        
         if (this.access_token) {
+          // OAuth flow: Use Bearer token and DO NOT append jKey
           headers['Authorization'] = `Bearer ${this.access_token}`;
+        } else if (this.susertoken) {
+          // Legacy flow fallback
+          payload += '&jKey=' + this.susertoken;
+        } else {
+          throw new Error("Not logged in");
         }
       }
 
