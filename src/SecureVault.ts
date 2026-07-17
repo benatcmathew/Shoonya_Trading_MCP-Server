@@ -167,8 +167,8 @@ export async function interactiveSetup(): Promise<void> {
   const user_id = await ask('  User ID: ');
   const password = await ask('  Password: ', true);
   const totp_key = await ask('  TOTP Secret Key: ', true);
-  const vendor_code = await ask('  Vendor Code: ');
-  const api_key = await ask('  API Key: ', true);
+  const vendor_code = await ask('  Client ID (formerly Vendor Code): ');
+  const api_key = await ask('  Secret Code (formerly API Key): ', true);
   const imei = await ask('  IMEI: ');
 
   console.log('\n🔑 Now set a Master Password to protect your vault.');
