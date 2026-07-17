@@ -141,22 +141,25 @@ export class ShoonyaClient {
       await inputHandles[2].click({ clickCount: 3 });
       await inputHandles[2].type(totp, { delay: 50 });
 
-      // Click the LOGIN button
-      const loginButton = await page.evaluateHandle(() => {
+      // Click the LOGIN button using evaluate (click inside browser context)
+      const clicked = await page.evaluate(() => {
         const buttons = Array.from(document.querySelectorAll('button'));
-        return buttons.find((btn) => btn.textContent?.trim().toUpperCase() === 'LOGIN') || null;
+        const loginBtn = buttons.find((btn) => btn.textContent?.trim().toUpperCase() === 'LOGIN');
+        if (loginBtn) {
+          loginBtn.click();
+          return true;
+        }
+        // Fallback: try submit buttons
+        const submitBtn = document.querySelector('button[type="submit"], input[type="submit"]') as HTMLElement;
+        if (submitBtn) {
+          submitBtn.click();
+          return true;
+        }
+        return false;
       });
 
-      if (!loginButton || !(loginButton as any).asElement()) {
-        // Fallback: try input[type="submit"] or button[type="submit"]
-        const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
-        if (submitBtn) {
-          await submitBtn.click();
-        } else {
-          throw new Error('Could not find LOGIN button on OAuth page');
-        }
-      } else {
-        await (loginButton as puppeteer.ElementHandle<HTMLButtonElement>).click();
+      if (!clicked) {
+        throw new Error('Could not find LOGIN button on OAuth page');
       }
 
       // Wait for the auth code to be captured via request interception
