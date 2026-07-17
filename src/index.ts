@@ -65,12 +65,12 @@ function startMCPServer() {
         },
         {
           name: "place_order",
-          description: "Place a standard order (Market/Limit) using a command string like 'NIFTY 24500 CE 30 L 110'",
+          description: "Place a Limit order (Market orders/MKT are NOT allowed by the exchange for Options via API). MUST use a Limit order command string like 'NIFTY 24500 CE 30 L 110'. To simulate a market order, use a Limit order with a price slightly higher/lower than LTP.",
           inputSchema: {
             type: "object",
             properties: {
-              buy_or_sell: { type: "string", description: "'B' or 'S'" },
-              command: { type: "string", description: "Smart order string" },
+              buy_or_sell: { type: "string", description: "Must be exactly 'B' for Buy or 'S' for Sell" },
+              command: { type: "string", description: "Smart order string, e.g., 'NIFTY 24500 CE 30 L 110'" },
             },
             required: ["buy_or_sell", "command"],
           },

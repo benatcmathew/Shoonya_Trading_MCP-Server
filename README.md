@@ -123,7 +123,7 @@ In Claude Desktop, simply say:
 | Tool | Parameters | Description |
 |---|---|---|
 | `login` | `master_password` | Decrypt vault & login to Shoonya |
-| `place_order` | `buy_or_sell`, `command` | Smart order (e.g., `"NIFTY 24500 CE 30 L 110"`) |
+| `place_order` | `buy_or_sell`, `command` | Smart order (`buy_or_sell` must be `"B"` or `"S"`). **Limit Orders ONLY** for Options (Market orders are blocked via API). Use `"NIFTY 24500 CE 30 L 110"` |
 | `place_manual_sl` | `command` | Manual SL (e.g., `"NIFTY 24500 CE 30 SL 100"`) |
 | `place_auto_sl` | `order_id`, `index` | Auto SL from filled order |
 | `modify_order` | `order_id`, `exchange`, `tradingsymbol`, ... | Modify open order |
