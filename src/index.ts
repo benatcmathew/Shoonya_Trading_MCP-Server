@@ -181,6 +181,14 @@ function startMCPServer() {
             required: ["order_id"],
           },
         },
+        {
+          name: "logout",
+          description: "Log out from Shoonya, invalidating the current session.",
+          inputSchema: {
+            type: "object",
+            properties: {},
+          },
+        },
       ],
     };
   });
@@ -234,6 +242,9 @@ function startMCPServer() {
           break;
         case "check_order_status":
           result = await client.getOrderStatus(args!.order_id as string);
+          break;
+        case "logout":
+          result = await client.logout();
           break;
         default:
           throw new Error(`Unknown tool: ${name}`);

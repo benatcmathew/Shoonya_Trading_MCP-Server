@@ -252,6 +252,27 @@ export class ShoonyaClient {
     );
   }
 
+  /**
+   * Logs out from Shoonya, invalidating the session tokens.
+   */
+  async logout(): Promise<any> {
+    if (!this.loggedIn) return { status: "error", message: "Not logged in" };
+    try {
+      const values = { uid: this.username };
+      const resDict = await this.makeRequest('Logout', values);
+      
+      if (resDict && resDict.stat === 'Ok') {
+        this.loggedIn = false;
+        this.susertoken = null;
+        this.access_token = null;
+        return { status: "success", message: "Successfully logged out" };
+      }
+      return { status: "error", message: resDict.emsg || "Logout failed" };
+    } catch (e: any) {
+      return { status: "error", message: e.message };
+    }
+  }
+
   private _parseOrderCommand(command: string): any {
     const parts = command.trim().toUpperCase().split(/\s+/);
     if (parts.length < 4) {
