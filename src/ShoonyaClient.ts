@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { sha256 } from 'js-sha256';
 import { TOTP } from 'totp-generator';
+import puppeteer from 'puppeteer';
 import { MasterData } from './MasterData.js';
 import { ShoonyaCredentials } from './SecureVault.js';
 
 const BASE_URL = 'https://api.shoonya.com/NorenWClientAPI/';
+const OAUTH_LOGIN_URL = 'https://api.shoonya.com/OAuthlogin/investor-entry-level/login';
 
 export class ShoonyaClient {
   private loggedIn: boolean = false;
@@ -40,37 +42,192 @@ export class ShoonyaClient {
     return response;
   }
 
-  async login(user_id: string, password: string, totp_key: string, vendor_code: string, api_key: string, imei: string): Promise<any> {
+  /**
+   * Get OAuth auth code by automating the login page with Puppeteer.
+   * Fills in user_id, password, and TOTP on the OAuth page, clicks LOGIN,
+   * and intercepts the redirect URL containing the auth code.
+   */
+  private async getAuthCode(user_id: string, password: string, totp: string, client_id: string): Promise<string> {
+    const loginUrl = `${OAUTH_LOGIN_URL}?api_key=${encodeURIComponent(client_id)}&route_to=${encodeURIComponent(user_id)}`;
+    let authCode: string | null = null;
+
+    const browser = await puppeteer.launch({
+      headless: true,
+      args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-gpu'],
+    });
+
+    try {
+      const page = await browser.newPage();
+
+      // Set up request interception to capture the auth code from redirects
+      page.on('request', (request) => {
+        const url = request.url();
+        if (url.includes('code=') && url.toLowerCase().includes('shoonya')) {
+          try {
+            const urlObj = new URL(url);
+            const code = urlObj.searchParams.get('code');
+            if (code) {
+              authCode = code;
+            }
+          } catch {
+            // URL parsing failed, try regex fallback
+            const match = url.match(/[?&]code=([^&]+)/);
+            if (match) {
+              authCode = match[1];
+            }
+          }
+        }
+      });
+
+      // Also intercept responses for redirect URLs
+      page.on('response', (response) => {
+        const url = response.url();
+        if (url.includes('code=') && url.toLowerCase().includes('shoonya')) {
+          try {
+            const urlObj = new URL(url);
+            const code = urlObj.searchParams.get('code');
+            if (code) {
+              authCode = code;
+            }
+          } catch {
+            const match = url.match(/[?&]code=([^&]+)/);
+            if (match) {
+              authCode = match[1];
+            }
+          }
+        }
+      });
+
+      // Navigate to the OAuth login page
+      await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+
+      // Wait for the password input to be visible (indicates page is ready)
+      await page.waitForSelector('input[type="password"]', { visible: true, timeout: 15000 });
+
+      // Find all visible text/password inputs (not hidden, not checkbox, not radio)
+      const visibleInputs = await page.$$eval('input', (inputs) => {
+        return inputs
+          .filter((input) => {
+            const type = (input.getAttribute('type') || 'text').toLowerCase();
+            if (['hidden', 'checkbox', 'radio', 'submit', 'button'].includes(type)) return false;
+            const style = window.getComputedStyle(input);
+            return style.display !== 'none' && style.visibility !== 'hidden' && input.offsetParent !== null;
+          })
+          .map((_, index) => index);
+      });
+
+      // Get all input elements on the page
+      const allInputs = await page.$$('input');
+
+      // Build a list of only the visible input handles
+      const inputHandles: puppeteer.ElementHandle<HTMLInputElement>[] = [];
+      for (const idx of visibleInputs) {
+        if (allInputs[idx]) {
+          inputHandles.push(allInputs[idx] as puppeteer.ElementHandle<HTMLInputElement>);
+        }
+      }
+
+      if (inputHandles.length < 3) {
+        throw new Error(`Expected at least 3 visible input fields on OAuth page, found ${inputHandles.length}`);
+      }
+
+      // Fill: input[0] = user_id, input[1] = password, input[2] = TOTP
+      await inputHandles[0].click({ clickCount: 3 }); // Select all existing text
+      await inputHandles[0].type(user_id, { delay: 50 });
+
+      await inputHandles[1].click({ clickCount: 3 });
+      await inputHandles[1].type(password, { delay: 50 });
+
+      await inputHandles[2].click({ clickCount: 3 });
+      await inputHandles[2].type(totp, { delay: 50 });
+
+      // Click the LOGIN button
+      const loginButton = await page.evaluateHandle(() => {
+        const buttons = Array.from(document.querySelectorAll('button'));
+        return buttons.find((btn) => btn.textContent?.trim().toUpperCase() === 'LOGIN') || null;
+      });
+
+      if (!loginButton || !(loginButton as any).asElement()) {
+        // Fallback: try input[type="submit"] or button[type="submit"]
+        const submitBtn = await page.$('button[type="submit"], input[type="submit"]');
+        if (submitBtn) {
+          await submitBtn.click();
+        } else {
+          throw new Error('Could not find LOGIN button on OAuth page');
+        }
+      } else {
+        await (loginButton as puppeteer.ElementHandle<HTMLButtonElement>).click();
+      }
+
+      // Wait for the auth code to be captured via request interception
+      const startTime = Date.now();
+      const timeout = 60000; // 60 seconds
+      while (!authCode && (Date.now() - startTime) < timeout) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      if (!authCode) {
+        throw new Error('Timed out waiting for OAuth auth code (60s). Login may have failed or TOTP expired.');
+      }
+
+      return authCode;
+    } finally {
+      await browser.close();
+    }
+  }
+
+  /**
+   * Exchange an OAuth auth code for an access token via GenAcsTok.
+   */
+  private async exchangeAuthCode(authCode: string, user_id: string, client_id: string, secret_code: string): Promise<any> {
+    const checksum = sha256(client_id + secret_code + authCode);
+
+    const payload = 'jData=' + JSON.stringify({
+      code: authCode,
+      checksum: checksum,
+      uid: user_id,
+    });
+
+    const res = await axios.post(`${BASE_URL}GenAcsTok`, payload, {
+      validateStatus: () => true,
+    });
+
+    return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+  }
+
+  /**
+   * Login to Shoonya using the OAuth headless browser flow.
+   * 1. Generate TOTP
+   * 2. Automate OAuth login page with Puppeteer to get auth code
+   * 3. Exchange auth code for access token via GenAcsTok
+   */
+  async login(user_id: string, password: string, totp_key: string, client_id: string, secret_code: string, imei: string): Promise<any> {
     try {
       const { otp } = await TOTP.generate(totp_key);
-      const pwdHash = sha256(password);
-      const appKeyHash = sha256(`${user_id}|${api_key}`);
 
-      const values = {
-        source: "API",
-        apkversion: "1.0.0",
-        uid: user_id,
-        pwd: pwdHash,
-        factor2: otp,
-        vc: vendor_code,
-        appkey: appKeyHash,
-        imei: imei
-      };
+      console.error(`[OAuth] Starting headless browser login for ${user_id}...`);
 
-      const resDict = await this.makeRequest('QuickAuth', values, false);
-      
-      if (resDict.stat === 'Ok') {
+      // Step 1: Get auth code via headless browser
+      const authCode = await this.getAuthCode(user_id, password, otp, client_id);
+      console.error(`[OAuth] Auth code obtained successfully.`);
+
+      // Step 2: Exchange auth code for access token
+      const resDict = await this.exchangeAuthCode(authCode, user_id, client_id, secret_code);
+
+      if (resDict.stat === 'Ok' || resDict.susertoken) {
         this.loggedIn = true;
-        this.username = user_id;
-        this.accountid = user_id;
+        this.username = resDict.uname || user_id;
+        this.accountid = resDict.actid || user_id;
         this.susertoken = resDict.susertoken;
-        
+
+        console.error(`[OAuth] Login successful. Token obtained.`);
+
         // Background master data download
         this.masterData.downloadMasterData().catch((e: any) => console.error("Background MD fail:", e));
 
-        return { status: "success", message: "Successfully logged in to Shoonya, master data downloading..." };
+        return { status: "success", message: "Successfully logged in to Shoonya via OAuth, master data downloading..." };
       } else {
-        return { status: "error", message: resDict.emsg || "Login failed" };
+        return { status: "error", message: resDict.emsg || "GenAcsTok failed: " + JSON.stringify(resDict) };
       }
     } catch (e: any) {
       return { status: "error", message: e.message };
@@ -86,8 +243,8 @@ export class ShoonyaClient {
       credentials.user_id,
       credentials.password,
       credentials.totp_key,
-      credentials.vendor_code,
-      credentials.api_key,
+      credentials.client_id,
+      credentials.secret_code,
       credentials.imei
     );
   }

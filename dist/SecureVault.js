@@ -139,8 +139,8 @@ export async function interactiveSetup() {
     const user_id = await ask('  User ID: ');
     const password = await ask('  Password: ', true);
     const totp_key = await ask('  TOTP Secret Key: ', true);
-    const vendor_code = await ask('  Client ID (formerly Vendor Code): ');
-    const api_key = await ask('  Secret Code (formerly API Key): ', true);
+    const client_id = await ask('  Client ID: ');
+    const secret_code = await ask('  Secret Code: ', true);
     const imei = await ask('  IMEI: ');
     console.log('\n🔑 Now set a Master Password to protect your vault.');
     console.log('   (You will need this each time the server starts)\n');
@@ -158,8 +158,8 @@ export async function interactiveSetup() {
         user_id,
         password,
         totp_key,
-        vendor_code,
-        api_key,
+        client_id,
+        secret_code,
         imei,
     };
     saveCredentials(credentials, masterPassword);

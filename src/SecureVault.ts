@@ -32,8 +32,8 @@ export interface ShoonyaCredentials {
   user_id: string;
   password: string;
   totp_key: string;
-  vendor_code: string;
-  api_key: string;
+  client_id: string;
+  secret_code: string;
   imei: string;
 }
 
@@ -167,8 +167,8 @@ export async function interactiveSetup(): Promise<void> {
   const user_id = await ask('  User ID: ');
   const password = await ask('  Password: ', true);
   const totp_key = await ask('  TOTP Secret Key: ', true);
-  const vendor_code = await ask('  Client ID (formerly Vendor Code): ');
-  const api_key = await ask('  Secret Code (formerly API Key): ', true);
+  const client_id = await ask('  Client ID: ');
+  const secret_code = await ask('  Secret Code: ', true);
   const imei = await ask('  IMEI: ');
 
   console.log('\n🔑 Now set a Master Password to protect your vault.');
@@ -191,8 +191,8 @@ export async function interactiveSetup(): Promise<void> {
     user_id,
     password,
     totp_key,
-    vendor_code,
-    api_key,
+    client_id,
+    secret_code,
     imei,
   };
 
