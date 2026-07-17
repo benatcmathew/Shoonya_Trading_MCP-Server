@@ -101,65 +101,54 @@ export class ShoonyaClient {
       // Navigate to the OAuth login page
       await page.goto(loginUrl, { waitUntil: 'networkidle2', timeout: 30000 });
 
-      // Wait for the password input to be visible (indicates page is ready)
-      await page.waitForSelector('input[type="password"]', { visible: true, timeout: 15000 });
+      // Small delay to let the page fully render
+      await new Promise((resolve) => setTimeout(resolve, 1000));
 
-      // Find all visible text/password inputs (not hidden, not checkbox, not radio)
-      const visibleInputs = await page.$$eval('input', (inputs) => {
-        return inputs
-          .filter((input) => {
-            const type = (input.getAttribute('type') || 'text').toLowerCase();
-            if (['hidden', 'checkbox', 'radio', 'submit', 'button'].includes(type)) return false;
-            const style = window.getComputedStyle(input);
-            return style.display !== 'none' && style.visibility !== 'hidden' && input.offsetParent !== null;
-          })
-          .map((_, index) => index);
-      });
+      // Fill credentials and click LOGIN — all inside the browser context
+      const fillResult = await page.evaluate((uid, pwd, otp) => {
+        // Find all visible, fillable inputs
+        const allInputs = Array.from(document.querySelectorAll('input'));
+        const visibleInputs = allInputs.filter((input) => {
+          const type = (input.getAttribute('type') || 'text').toLowerCase();
+          if (['hidden', 'checkbox', 'radio', 'submit', 'button'].includes(type)) return false;
+          const style = window.getComputedStyle(input);
+          return style.display !== 'none' && style.visibility !== 'hidden' && input.offsetParent !== null;
+        });
 
-      // Get all input elements on the page
-      const allInputs = await page.$$('input');
-
-      // Build a list of only the visible input handles
-      const inputHandles: puppeteer.ElementHandle<HTMLInputElement>[] = [];
-      for (const idx of visibleInputs) {
-        if (allInputs[idx]) {
-          inputHandles.push(allInputs[idx] as puppeteer.ElementHandle<HTMLInputElement>);
+        if (visibleInputs.length < 3) {
+          return { ok: false, error: `Expected 3 visible inputs, found ${visibleInputs.length}` };
         }
-      }
 
-      if (inputHandles.length < 3) {
-        throw new Error(`Expected at least 3 visible input fields on OAuth page, found ${inputHandles.length}`);
-      }
+        // Helper to set input value and trigger React/Vue change events
+        const fillInput = (el: HTMLInputElement, value: string) => {
+          el.focus();
+          el.value = value;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        };
 
-      // Fill: input[0] = user_id, input[1] = password, input[2] = TOTP
-      await inputHandles[0].click({ clickCount: 3 }); // Select all existing text
-      await inputHandles[0].type(user_id, { delay: 50 });
+        // input[0] = User ID, input[1] = Password, input[2] = TOTP
+        fillInput(visibleInputs[0], uid);
+        fillInput(visibleInputs[1], pwd);
+        fillInput(visibleInputs[2], otp);
 
-      await inputHandles[1].click({ clickCount: 3 });
-      await inputHandles[1].type(password, { delay: 50 });
-
-      await inputHandles[2].click({ clickCount: 3 });
-      await inputHandles[2].type(totp, { delay: 50 });
-
-      // Click the LOGIN button using evaluate (click inside browser context)
-      const clicked = await page.evaluate(() => {
+        // Click the LOGIN button
         const buttons = Array.from(document.querySelectorAll('button'));
         const loginBtn = buttons.find((btn) => btn.textContent?.trim().toUpperCase() === 'LOGIN');
         if (loginBtn) {
           loginBtn.click();
-          return true;
+          return { ok: true };
         }
-        // Fallback: try submit buttons
         const submitBtn = document.querySelector('button[type="submit"], input[type="submit"]') as HTMLElement;
         if (submitBtn) {
           submitBtn.click();
-          return true;
+          return { ok: true };
         }
-        return false;
-      });
+        return { ok: false, error: 'Could not find LOGIN button' };
+      }, user_id, password, totp);
 
-      if (!clicked) {
-        throw new Error('Could not find LOGIN button on OAuth page');
+      if (!fillResult.ok) {
+        throw new Error(fillResult.error || 'Failed to fill OAuth login form');
       }
 
       // Wait for the auth code to be captured via request interception
