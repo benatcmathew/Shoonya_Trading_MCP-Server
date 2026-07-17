@@ -4,7 +4,7 @@ import { TOTP } from 'totp-generator';
 import { MasterData } from './MasterData.js';
 import { ShoonyaCredentials } from './SecureVault.js';
 
-const BASE_URL = 'https://api.shoonya.com/NorenWClientTP/';
+const BASE_URL = 'https://api.shoonya.com/NorenWClientAPI/';
 
 export class ShoonyaClient {
   private loggedIn: boolean = false;
@@ -21,7 +21,9 @@ export class ShoonyaClient {
         payload += '&jKey=' + this.susertoken;
       }
 
-      const res = await axios.post(`${BASE_URL}${endpoint}`, payload);
+      const res = await axios.post(`${BASE_URL}${endpoint}`, payload, {
+        validateStatus: () => true // Resolve all status codes to parse JSON errors
+      });
       return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
     } catch (error: any) {
       throw new Error(`API Request Failed: ${error.message}`);

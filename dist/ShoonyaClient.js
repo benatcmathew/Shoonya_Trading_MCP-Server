@@ -2,7 +2,7 @@ import axios from 'axios';
 import { sha256 } from 'js-sha256';
 import { TOTP } from 'totp-generator';
 import { MasterData } from './MasterData.js';
-const BASE_URL = 'https://api.shoonya.com/NorenWClientTP/';
+const BASE_URL = 'https://api.shoonya.com/NorenWClientAPI/';
 export class ShoonyaClient {
     loggedIn = false;
     susertoken = null;
@@ -17,7 +17,9 @@ export class ShoonyaClient {
                     throw new Error("Not logged in");
                 payload += '&jKey=' + this.susertoken;
             }
-            const res = await axios.post(`${BASE_URL}${endpoint}`, payload);
+            const res = await axios.post(`${BASE_URL}${endpoint}`, payload, {
+                validateStatus: () => true // Resolve all status codes to parse JSON errors
+            });
             return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
         }
         catch (error) {
