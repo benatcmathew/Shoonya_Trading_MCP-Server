@@ -27,7 +27,8 @@ export class ShoonyaClient {
         if (this.access_token) {
           // OAuth flow: Use Bearer token and DO NOT append jKey
           headers['Authorization'] = `Bearer ${this.access_token}`;
-          headers['Content-Type'] = 'application/x-www-form-urlencoded';
+          // Shoonya requires this specific content type when using Bearer token
+          headers['Content-Type'] = 'application/json; charset=utf-8';
         } else if (this.susertoken) {
           // Legacy flow fallback
           payload += '&jKey=' + this.susertoken;
@@ -41,6 +42,7 @@ export class ShoonyaClient {
 
       const res = await axios.post(`${BASE_URL}${endpoint}`, payload, {
         headers,
+        transformRequest: [(data) => data], // CRITICAL: Prevent Axios from JSON.stringifying our already formatted jData= string!
         validateStatus: () => true // Resolve all status codes to parse JSON errors
       });
       return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
