@@ -227,8 +227,8 @@ export class ShoonyaClient {
 
       if (resDict.stat === 'Ok' || resDict.susertoken) {
         this.loggedIn = true;
-        this.username = resDict.uname || user_id;
-        this.accountid = resDict.actid || user_id;
+        this.username = user_id; // CRITICAL: Must be the actual login UID (e.g. FA394463), NOT resDict.uname (which is the human name)
+        this.accountid = user_id; // CRITICAL: actid must also be the login UID
         this.susertoken = resDict.susertoken;
         this.access_token = resDict.access_token; // Store access token for Bearer auth
 
