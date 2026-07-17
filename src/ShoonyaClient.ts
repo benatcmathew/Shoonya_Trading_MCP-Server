@@ -27,7 +27,7 @@ export class ShoonyaClient {
         if (this.access_token) {
           // OAuth flow: Use Bearer token and DO NOT append jKey
           headers['Authorization'] = `Bearer ${this.access_token}`;
-          headers['Content-Type'] = 'application/json; charset=utf-8';
+          headers['Content-Type'] = 'application/x-www-form-urlencoded';
         } else if (this.susertoken) {
           // Legacy flow fallback
           payload += '&jKey=' + this.susertoken;
@@ -35,6 +35,9 @@ export class ShoonyaClient {
           throw new Error("Not logged in");
         }
       }
+
+      console.error(`[API Request] POST ${endpoint}`);
+      console.error(`[API Request] Payload: ${payload}`);
 
       const res = await axios.post(`${BASE_URL}${endpoint}`, payload, {
         headers,
