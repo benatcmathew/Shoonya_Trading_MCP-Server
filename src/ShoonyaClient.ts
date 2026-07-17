@@ -27,6 +27,7 @@ export class ShoonyaClient {
         if (this.access_token) {
           // OAuth flow: Use Bearer token and DO NOT append jKey
           headers['Authorization'] = `Bearer ${this.access_token}`;
+          headers['Content-Type'] = 'application/json; charset=utf-8';
         } else if (this.susertoken) {
           // Legacy flow fallback
           payload += '&jKey=' + this.susertoken;
@@ -226,7 +227,7 @@ export class ShoonyaClient {
         this.susertoken = resDict.susertoken;
         this.access_token = resDict.access_token; // Store access token for Bearer auth
 
-        console.error(`[OAuth] Login successful. Token obtained.`);
+        console.error(`[OAuth] Login successful. Access Token: ${this.access_token ? "EXISTS" : "MISSING"} | Susertoken: ${this.susertoken ? "EXISTS" : "MISSING"}`);
 
         // Background master data download
         this.masterData.downloadMasterData().catch((e: any) => console.error("Background MD fail:", e));
